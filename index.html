@@ -123,7 +123,7 @@ const defaultBooks = [
   {
     id: 3,
     title: "The Little Prince",
-    author: "Antoine de Saint-ExupÃ©ry",
+    author: "Antoine de Saint-Exupéry",
     status: "Finished",
     rating: 4,
     started: "Jul 6, 2026",
@@ -250,7 +250,7 @@ function cover(book, cls="") {
 }
 
 function stars(rating, interactive=false) {
-  return `<div class="stars ${interactive ? "interactive" : ""}" aria-label="${rating} out of 5 stars">${[1,2,3,4,5].map(n => `<button ${interactive ? `data-rate="${n}"` : "disabled"} class="star ${n <= rating ? "on" : ""}" aria-label="${n} star${n>1?"s":""}">â˜…</button>`).join("")}</div>`;
+  return `<div class="stars ${interactive ? "interactive" : ""}" aria-label="${rating} out of 5 stars">${[1,2,3,4,5].map(n => `<button ${interactive ? `data-rate="${n}"` : "disabled"} class="star ${n <= rating ? "on" : ""}" aria-label="${n} star${n>1?"s":""}">★</button>`).join("")}</div>`;
 }
 
 function shell(content, active=state.screen) {
@@ -298,7 +298,7 @@ function libraryView() {
       <label class="search-box">${icon("search")}<input id="library-search" type="search" value="${state.search}" placeholder="Search title or author" aria-label="Search library"></label>
       <div class="chips" role="tablist">${["All Books","Reading","Finished","Loved It","Want to Read"].map(f => `<button class="chip ${state.filter===f?"active":""}" data-filter="${f}">${f}</button>`).join("")}</div>
       <div class="book-grid">
-        ${filtered.length ? filtered.map(b => `<button class="book-card" data-book="${b.id}">${cover(b)}<div class="book-meta"><strong>${b.title}</strong><span>${b.author}</span>${b.rating ? stars(b.rating) : `<span class="status-line">${b.status}</span>`}</div></button>`).join("") : `<div class="empty-state"><div class="empty-icon">â™¡</div><h3>Your shelf is waiting for its first story.</h3><p>Try another search or add something new.</p><button data-nav="add" class="primary-btn">Add Book</button></div>`}
+        ${filtered.length ? filtered.map(b => `<button class="book-card" data-book="${b.id}">${cover(b)}<div class="book-meta"><strong>${b.title}</strong><span>${b.author}</span>${b.rating ? stars(b.rating) : `<span class="status-line">${b.status}</span>`}</div></button>`).join("") : `<div class="empty-state"><div class="empty-icon">♡</div><h3>Your shelf is waiting for its first story.</h3><p>Try another search or add something new.</p><button data-nav="add" class="primary-btn">Add Book</button></div>`}
       </div>
     </section>
   `, "library");
@@ -325,7 +325,7 @@ function detailView(book) {
     </section>
     <section class="journal-card photos-card">
       <div class="section-row"><div><p class="eyebrow">Memories</p><h2>Photos</h2></div><button class="icon-btn">${icon("camera")}</button></div>
-      <div class="photo-grid">${book.photos.map((photo,index) => `<div class="photo-item"><img src="${photo}" alt="Book memory ${index+1}"><button class="photo-remove" data-remove-photo="${index}" aria-label="Remove photo">Ã—</button></div>`).join("")}${book.photos.length ? "" : `<p class="photo-empty">Add a photo from your camera or photo library.</p>`}<label class="photo-add" aria-label="Add photo">+<input id="photo-input" type="file" accept="image/*"></label></div>
+      <div class="photo-grid">${book.photos.map((photo,index) => `<div class="photo-item"><img src="${photo}" alt="Book memory ${index+1}"><button class="photo-remove" data-remove-photo="${index}" aria-label="Remove photo">×</button></div>`).join("")}${book.photos.length ? "" : `<p class="photo-empty">Add a photo from your camera or photo library.</p>`}<label class="photo-add" aria-label="Add photo">+<input id="photo-input" type="file" accept="image/*"></label></div>
     </section>
     <button class="danger-link" id="delete-book">Delete book</button>
   `, "library");
@@ -362,15 +362,15 @@ function addView() {
 }
 
 function scanPanel() {
-  return `<section class="scan-card"><h2>Photograph the cover</h2><p>Take a clear, straight-on picture of the front cover. The app will read its title and find matching books.</p><div class="cover-photo-actions"><label class="primary-btn">${icon("camera")} Take Photo<input id="cover-camera-input" type="file" accept="image/*" capture="environment"></label><label class="secondary-btn">Choose Photo<input id="cover-library-input" type="file" accept="image/*"></label></div><small>Cover recognition may take 10â€“30 seconds the first time.</small><div class="scan-divider">OR SCAN THE BARCODE</div><div class="scan-frame" id="scan-frame"><video class="scan-video" id="barcode-video" playsinline muted></video><div class="scan-corner c1"></div><div class="scan-corner c2"></div><div class="scan-corner c3"></div><div class="scan-corner c4"></div><div class="barcode">|||| ||| | |||| || |</div></div><p>Aim the rear camera at the barcode, or type the ISBN below.</p><div class="scan-actions"><button class="primary-btn" id="start-scan" type="button">${icon("camera")} Barcode Camera</button><button class="secondary-btn" id="stop-scan" type="button" hidden>Stop</button></div><form class="manual-form" id="isbn-form"><label>ISBN<input name="isbn" inputmode="numeric" placeholder="9781501161933" required></label><button class="secondary-btn" type="submit">${icon("search")} Find by ISBN</button></form></section>`;
+  return `<section class="scan-card"><h2>Photograph the cover</h2><p>Take a clear, straight-on picture of the front cover. The app will read its title and find matching books.</p><div class="cover-photo-actions"><label class="primary-btn">${icon("camera")} Take Photo<input id="cover-camera-input" type="file" accept="image/*" capture="environment"></label><label class="secondary-btn">Choose Photo<input id="cover-library-input" type="file" accept="image/*"></label></div><small>Cover recognition may take 10–30 seconds the first time.</small><div class="scan-divider">OR SCAN THE BARCODE</div><div class="scan-frame" id="scan-frame"><video class="scan-video" id="barcode-video" playsinline muted></video><div class="scan-corner c1"></div><div class="scan-corner c2"></div><div class="scan-corner c3"></div><div class="scan-corner c4"></div><div class="barcode">|||| ||| | |||| || |</div></div><p>Aim the rear camera at the barcode, or type the ISBN below.</p><div class="scan-actions"><button class="primary-btn" id="start-scan" type="button">${icon("camera")} Barcode Camera</button><button class="secondary-btn" id="stop-scan" type="button" hidden>Stop</button></div><form class="manual-form" id="isbn-form"><label>ISBN<input name="isbn" inputmode="numeric" placeholder="9781501161933" required></label><button class="secondary-btn" type="submit">${icon("search")} Find by ISBN</button></form></section>`;
 }
 
 function searchPanel() {
-  if (state.searchResults || state.bookSearch !== undefined) return `<section class="form-card"><form id="book-search-form"><label class="search-box big">${icon("search")}<input id="book-search" type="search" placeholder="Title, author, or ISBN" value="${escapeHtml(state.bookSearch)}" required></label><button class="primary-btn" type="submit" style="margin-top:10px">${state.searchBusy ? "Searchingâ€¦" : "Search Books"}</button></form><p class="form-help">${state.searchResults.length ? "Results" : "Find your next read"}</p><div class="result-list">
-    ${state.searchResults.map((b,index) => `<button class="search-result" data-search-result="${index}">${cover(b,"tiny")}<div><strong>${escapeHtml(b.title)}</strong><span>${escapeHtml(b.author)}</span><small>${b.pages || "?"} pages${b.isbn ? ` Â· ISBN ${escapeHtml(b.isbn)}` : ""}</small></div>${icon("chevron")}</button>`).join("") || `<p style="color:var(--muted);font-size:13px;line-height:1.5">Search by title, author, or ISBN. Tap a result to add it to your library.</p>`}
+  if (state.searchResults || state.bookSearch !== undefined) return `<section class="form-card"><form id="book-search-form"><label class="search-box big">${icon("search")}<input id="book-search" type="search" placeholder="Title, author, or ISBN" value="${escapeHtml(state.bookSearch)}" required></label><button class="primary-btn" type="submit" style="margin-top:10px">${state.searchBusy ? "Searching…" : "Search Books"}</button></form><p class="form-help">${state.searchResults.length ? "Results" : "Find your next read"}</p><div class="result-list">
+    ${state.searchResults.map((b,index) => `<button class="search-result" data-search-result="${index}">${cover(b,"tiny")}<div><strong>${escapeHtml(b.title)}</strong><span>${escapeHtml(b.author)}</span><small>${b.pages || "?"} pages${b.isbn ? ` · ISBN ${escapeHtml(b.isbn)}` : ""}</small></div>${icon("chevron")}</button>`).join("") || `<p style="color:var(--muted);font-size:13px;line-height:1.5">Search by title, author, or ISBN. Tap a result to add it to your library.</p>`}
   </div></section>`;
   return `<section class="form-card"><label class="search-box big">${icon("search")}<input id="book-search" type="search" placeholder="Title, author, or ISBN" value="better than the movies"></label><p class="form-help">Prototype results</p><div class="result-list">
-    ${books.slice(1,4).map(b => `<button class="search-result" data-result="${b.id}">${cover(b,"tiny")}<div><strong>${b.title}</strong><span>${b.author}</span><small>${b.pages} pages Â· ISBN ${b.isbn}</small></div>${icon("chevron")}</button>`).join("")}
+    ${books.slice(1,4).map(b => `<button class="search-result" data-result="${b.id}">${cover(b,"tiny")}<div><strong>${b.title}</strong><span>${b.author}</span><small>${b.pages} pages · ISBN ${b.isbn}</small></div>${icon("chevron")}</button>`).join("")}
   </div></section>`;
 }
 
@@ -403,7 +403,7 @@ function statsView() {
       ${statCard("Top author","Jenny Han","2 books")}
     </section>
     <section class="chart-card"><div class="section-row"><div><p class="eyebrow">Finished books</p><h2>Monthly rhythm</h2></div><span class="soft-pill">Last 6 months</span></div><div class="bar-chart">${[["Mar",1],["Apr",2],["May",1],["Jun",3],["Jul",2],["Aug",1]].map(([m,n])=>`<div><span style="height:${n*34}px"></span><small>${m}</small></div>`).join("")}</div></section>
-    <section class="journal-card"><p class="eyebrow">Most-read authors</p><h2>Your familiar names</h2><div class="author-row"><span class="author-avatar">JH</span><div><strong>Jenny Han</strong><small>2 books</small></div><span>â™¡</span></div><div class="author-row"><span class="author-avatar">LP</span><div><strong>Lynn Painter</strong><small>1 book</small></div><span>â™¡</span></div></section>
+    <section class="journal-card"><p class="eyebrow">Most-read authors</p><h2>Your familiar names</h2><div class="author-row"><span class="author-avatar">JH</span><div><strong>Jenny Han</strong><small>2 books</small></div><span>♡</span></div><div class="author-row"><span class="author-avatar">LP</span><div><strong>Lynn Painter</strong><small>1 book</small></div><span>♡</span></div></section>
   `,"stats");
 }
 
@@ -414,7 +414,7 @@ function statCard(label,value,sub) {
 function settingsView() {
   return shell(`
     ${header("Settings")}
-    <section class="profile-card"><div class="brand-mark"><span>â™¡</span></div><div><h2>Blush & Books</h2><p>Your cozy little reading corner.</p></div></section>
+    <section class="profile-card"><div class="brand-mark"><span>♡</span></div><div><h2>Blush & Books</h2><p>Your cozy little reading corner.</p></div></section>
     <section class="settings-group"><p class="eyebrow">Library</p>${settingRow("Default shelf","All Books")}${settingRow("5-star books","Add to Loved It automatically")}${settingRow("Finished date","Suggest today's date")}</section>
     <section class="settings-group"><p class="eyebrow">Appearance</p>${settingRow("Theme","Warm Cream")}${settingRow("Book covers","Large grid")}${settingRow("Reduce motion","Off")}</section>
     <section class="settings-group"><p class="eyebrow">Data</p>${settingRow("Storage","Saved on this device")}${settingRow("Export library","Coming later")}</section>
@@ -478,7 +478,7 @@ async function showIsbnResults(isbn) {
 
 async function startScanner() {
   if (!("BarcodeDetector" in window)) {
-    state.toast = "Automatic scanning is not supported hereâ€”type the ISBN below";
+    state.toast = "Automatic scanning is not supported here—type the ISBN below";
     render();
     return;
   }
@@ -505,7 +505,7 @@ async function startScanner() {
     detect();
   } catch {
     stopScanner();
-    state.toast = "Camera access was unavailableâ€”type the ISBN below";
+    state.toast = "Camera access was unavailable—type the ISBN below";
     render();
   }
 }
@@ -534,17 +534,20 @@ function compressPhoto(file) {
 
 async function recognizeBookCover(file) {
   stopScanner();
-  state.toast = "Reading the coverâ€”this may take a momentâ€¦";
+  state.toast = "Reading the cover—this may take a moment…";
   render();
   let worker;
   try {
     if (!window.Tesseract) throw new Error("OCR unavailable");
     const coverPhoto = await compressPhoto(file);
     worker = await Tesseract.createWorker("eng", 1, {
+      workerPath: new URL("tesseract-worker.min.js", location.href).href,
+      corePath: new URL("tesseract-core-simd-lstm.wasm.js", location.href).href,
+      langPath: new URL(".", location.href).href,
       logger: message => {
         if (message.status !== "recognizing text") return;
         const toast = document.querySelector(".toast");
-        if (toast) toast.textContent = `Reading coverâ€¦ ${Math.round((message.progress || 0) * 100)}%`;
+        if (toast) toast.textContent = `Reading cover… ${Math.round((message.progress || 0) * 100)}%`;
       }
     });
     const result = await worker.recognize(coverPhoto, {rotateAuto:true});
@@ -564,10 +567,10 @@ async function recognizeBookCover(file) {
       if (results.length) state.bookSearch = line;
     }
     state.searchResults = results;
-    state.toast = results.length ? "Choose the matching book" : "I read the cover, but could not find a matchâ€”edit the search text and try again";
+    state.toast = results.length ? "Choose the matching book" : "I read the cover, but could not find a match—edit the search text and try again";
   } catch {
     state.pendingCoverPhoto = null;
-    state.toast = "I could not read that coverâ€”try a brighter, straighter photo";
+    state.toast = "I could not read that cover—try a brighter, straighter photo";
   } finally {
     await worker?.terminate();
     state.searchBusy = false;
@@ -613,7 +616,7 @@ function bindEvents() {
     render();
     try {
       state.searchResults = await lookupBooks(state.bookSearch);
-      if (!state.searchResults.length) state.toast = "No books foundâ€”try another search";
+      if (!state.searchResults.length) state.toast = "No books found—try another search";
     } catch {
       state.toast = "Book search needs an internet connection";
     }
@@ -676,7 +679,7 @@ function bindEvents() {
       render();
       return;
     }
-    state.toast = "Preparing photoâ€¦";
+    state.toast = "Preparing photo…";
     render();
     try {
       const photo = await compressPhoto(file);
@@ -685,7 +688,7 @@ function bindEvents() {
       state.toast = "Photo attached";
     } catch {
       state.selectedBook.photos.pop();
-      state.toast = "That photo could not be savedâ€”try a smaller image";
+      state.toast = "That photo could not be saved—try a smaller image";
     }
     render();
     setTimeout(() => { state.toast = ""; render(); }, 1800);
@@ -706,7 +709,7 @@ function bindEvents() {
     render();
     setTimeout(() => { state.toast = ""; render(); }, 1800);
     return;
-    state.toast = "Saved to your prototype library â™¡";
+    state.toast = "Saved to your prototype library ♡";
     state.screen = "library";
     render();
     setTimeout(() => { state.toast = ""; render(); }, 1800);
@@ -754,4 +757,3 @@ render();
   </script>
 </body>
 </html>
-
