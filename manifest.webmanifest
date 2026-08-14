@@ -1,0 +1,19 @@
+{
+  "name": "Blush & Books",
+  "short_name": "Blush & Books",
+  "description": "A cozy personal reading journal and book tracker.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f1e8",
+  "theme_color": "#f8f1e8",
+  "icons": [
+    {
+      "src": "app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
