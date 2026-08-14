@@ -503,11 +503,38 @@ async function lookupBooks(query) {
 
 function usefulCoverLines(lines) {
   const promotional = /new york times|bestsell(?:er|ing)|award.winning|author of|a novel|now a major|soon to be|international bestseller|book club/i;
-  return lines.filter(line => !promotional.test(line) && /[A-Za-z]{2}/.test(line))
-    .sort((a, b) => {
-      const score = value => (value.split(/\s+/).length >= 2 ? 4 : 0) + (value.length <= 45 ? 2 : 0) + (value === value.toUpperCase() ? 1 : 0);
-      return score(b) - score(a);
-    }).slice(0, 6);
+  return lines.filter(line => !promotional.test(line) && /[A-Za-z]{2}/.test(line)).slice(0, 8);
+}
+
+function cleanCoverText(value) {
+  return String(value || "").replace(/[^A-Za-z0-9'&:.,! ?-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function rankedCoverLines(result) {
+  const grouped = new Map();
+  const rows = String(result.data.tsv || "").split(/\r?\n/).slice(1);
+  rows.forEach(row => {
+    const cells = row.split("\t");
+    if (cells.length < 12 || cells[0] !== "5") return;
+    const text = cleanCoverText(cells.slice(11).join(" "));
+    if (!/[A-Za-z]{2}/.test(text)) return;
+    const key = `${cells[2]}-${cells[3]}-${cells[4]}`;
+    const current = grouped.get(key) || {words: [], height: 0, top: Number(cells[7]) || 0, confidence: 0};
+    current.words.push(text);
+    current.height = Math.max(current.height, Number(cells[9]) || 0);
+    current.top = Math.min(current.top, Number(cells[7]) || current.top);
+    current.confidence += Math.max(0, Number(cells[10]) || 0);
+    grouped.set(key, current);
+  });
+  const measured = [...grouped.values()].map(line => ({
+    text: cleanCoverText(line.words.join(" ")),
+    score: line.height * (0.75 + Math.min(100, line.confidence / Math.max(1, line.words.length)) / 400),
+    top: line.top
+  })).filter(line => line.text.length >= 3 && line.text.length <= 80)
+    .sort((a, b) => b.score - a.score || a.top - b.top).map(line => line.text);
+  const plain = String(result.data.text || "").split(/\r?\n/).map(cleanCoverText)
+    .filter(line => /[A-Za-z]{2}/.test(line) && line.length >= 3 && line.length <= 80);
+  return [...new Set([...measured, ...plain])];
 }
 
 async function lookupCoverMatches(lines) {
@@ -585,7 +612,7 @@ async function startScanner() {
   }
 }
 
-function compressPhoto(file) {
+function resizePhoto(file, maxSide=1200, quality=.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
@@ -593,18 +620,21 @@ function compressPhoto(file) {
       const image = new Image();
       image.onerror = reject;
       image.onload = () => {
-        const maxSide = 1200;
         const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(image.width * scale);
         canvas.height = Math.round(image.height * scale);
         canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", .72));
+        resolve(canvas.toDataURL("image/jpeg", quality));
       };
       image.src = reader.result;
     };
     reader.readAsDataURL(file);
   });
+}
+
+function compressPhoto(file) {
+  return resizePhoto(file, 1200, .72);
 }
 
 async function recognizeBookCover(file) {
@@ -614,7 +644,7 @@ async function recognizeBookCover(file) {
   let worker;
   try {
     if (!window.Tesseract) throw new Error("OCR unavailable");
-    const coverPhoto = await compressPhoto(file);
+    const [coverPhoto, ocrPhoto] = await Promise.all([compressPhoto(file), resizePhoto(file, 2000, .86)]);
     worker = await Tesseract.createWorker("eng", 1, {
       workerPath: new URL("tesseract-worker.min.js", location.href).href,
       corePath: new URL("tesseract-core-simd-lstm.wasm.js", location.href).href,
@@ -625,10 +655,9 @@ async function recognizeBookCover(file) {
         if (toast) toast.textContent = `Reading cover… ${Math.round((message.progress || 0) * 100)}%`;
       }
     });
-    const result = await worker.recognize(coverPhoto, {rotateAuto:true});
-    const lines = [...new Set(result.data.text.split(/\r?\n/)
-      .map(line => line.replace(/[^A-Za-z0-9'&:.,! ?-]/g, " ").replace(/\s+/g, " ").trim())
-      .filter(line => /[A-Za-z]{2}/.test(line) && line.length >= 3 && line.length <= 80))];
+    await worker.setParameters({tessedit_pageseg_mode: Tesseract.PSM.AUTO});
+    const result = await worker.recognize(ocrPhoto, {rotateAuto:true}, {tsv:true});
+    const lines = rankedCoverLines(result);
     if (!lines.length) throw new Error("No text found");
     state.pendingCoverPhoto = coverPhoto;
     state.bookSearch = usefulCoverLines(lines).slice(0, 2).join(" ") || lines[0];
@@ -638,7 +667,7 @@ async function recognizeBookCover(file) {
     const matches = await lookupCoverMatches(lines);
     state.bookSearch = matches.query;
     state.searchResults = matches.results;
-    state.toast = matches.results.length ? "Choose the matching book" : "I read the cover, but could not find a match—edit the search text and try again";
+    state.toast = matches.results.length ? `I searched for “${matches.query}”—edit it above if needed` : "I read the cover, but could not find a match—edit the search text and try again";
   } catch {
     state.pendingCoverPhoto = null;
     state.toast = "I could not read that cover—try a brighter, straighter photo";
