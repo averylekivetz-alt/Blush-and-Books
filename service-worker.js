@@ -1,4 +1,4 @@
-const CACHE_NAME = "blush-and-books-v8";
+const CACHE_NAME = "blush-and-books-v9";
 const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./app-icon.svg", "./tesseract.min.js", "./tesseract-worker.min.js", "./tesseract-core-simd-lstm.wasm.js", "./tesseract-core-simd-lstm.wasm", "./eng.traineddata.gz"];
 
 self.addEventListener("install", event => {
@@ -25,3 +25,4 @@ self.addEventListener("fetch", event => {
     }).catch(() => caches.match("./index.html")))
   );
 });
+
