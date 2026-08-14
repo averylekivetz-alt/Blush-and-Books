@@ -87,7 +87,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js"));
 }
 
-const books = [
+const defaultBooks = [
   {
     id: 1,
     title: "The Seven Husbands of Evelyn Hugo",
@@ -179,6 +179,18 @@ const books = [
     short: "DIVINE\nRIVALS"
   }
 ];
+
+let books;
+try {
+  const savedBooks = JSON.parse(localStorage.getItem("blush-and-books-library"));
+  books = Array.isArray(savedBooks) ? savedBooks : defaultBooks;
+} catch {
+  books = defaultBooks;
+}
+
+function saveLibrary() {
+  localStorage.setItem("blush-and-books-library", JSON.stringify(books));
+}
 
 const state = {
   screen: "library",
@@ -292,6 +304,27 @@ function detailView(book) {
   `, "library");
 }
 
+function editView(book) {
+  return shell(`
+    <div class="detail-topbar"><button class="icon-btn" data-screen="detail" aria-label="Cancel editing">${icon("back")}</button><span>Edit book</span><span></span></div>
+    <form class="form-card manual-form" id="edit-form">
+      <label>Title<input name="title" value="${escapeHtml(book.title)}" required></label>
+      <label>Author<input name="author" value="${escapeHtml(book.author)}" required></label>
+      <label>ISBN<input name="isbn" inputmode="numeric" value="${escapeHtml(book.isbn || "")}" placeholder="Optional"></label>
+      <div class="two-col"><label>Status<select name="status">${["Want to Read","Reading","Finished"].map(status => `<option ${book.status===status?"selected":""}>${status}</option>`).join("")}</select></label><label>Pages<input name="pages" type="number" min="0" value="${book.pages || ""}"></label></div>
+      <div class="two-col"><label>Date started<input name="started" value="${escapeHtml(book.started || "")}" placeholder="Aug 14, 2026"></label><label>Date finished<input name="finished" value="${escapeHtml(book.finished || "")}" placeholder="Aug 14, 2026"></label></div>
+      <label>Rating<select name="rating">${[0,1,2,3,4,5].map(rating => `<option value="${rating}" ${book.rating===rating?"selected":""}>${rating ? `${rating} star${rating>1?"s":""}` : "Not rated"}</option>`).join("")}</select></label>
+      <label>Review<textarea name="review" rows="5" placeholder="What did this book make you think or feel?">${escapeHtml(book.review || "")}</textarea></label>
+      <button class="primary-btn" type="submit">Save Changes</button>
+      <button class="danger-link" id="delete-book" type="button">Delete book</button>
+    </form>
+  `, "library");
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[char]);
+}
+
 function addView() {
   return shell(`
     ${header("Add a Book")}
@@ -354,8 +387,8 @@ function settingsView() {
     <section class="profile-card"><div class="brand-mark"><span>â™¡</span></div><div><h2>Blush & Books</h2><p>Your cozy little reading corner.</p></div></section>
     <section class="settings-group"><p class="eyebrow">Library</p>${settingRow("Default shelf","All Books")}${settingRow("5-star books","Add to Loved It automatically")}${settingRow("Finished date","Suggest today's date")}</section>
     <section class="settings-group"><p class="eyebrow">Appearance</p>${settingRow("Theme","Warm Cream")}${settingRow("Book covers","Large grid")}${settingRow("Reduce motion","Off")}</section>
-    <section class="settings-group"><p class="eyebrow">Data</p>${settingRow("Storage","Prototype sample data")}${settingRow("Export library","Coming later")}</section>
-    <section class="settings-note"><strong>Prototype mode</strong><p>Changes reset when the page reloads. Local persistence is the next build stage.</p></section>
+    <section class="settings-group"><p class="eyebrow">Data</p>${settingRow("Storage","Saved on this device")}${settingRow("Export library","Coming later")}</section>
+    <section class="settings-note"><strong>Saved locally</strong><p>Your edits, ratings, favorites, and removed books stay saved in this browser on this device.</p></section>
   `,"settings");
 }
 
@@ -364,6 +397,7 @@ function settingRow(a,b){ return `<button class="setting-row"><span>${a}</span><
 function render() {
   app.innerHTML = state.screen === "library" ? libraryView() :
     state.screen === "detail" ? detailView(state.selectedBook) :
+    state.screen === "edit" ? editView(state.selectedBook) :
     state.screen === "add" ? addView() :
     state.screen === "stats" ? statsView() : settingsView();
   bindEvents();
@@ -372,6 +406,10 @@ function render() {
 function bindEvents() {
   document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", () => {
     state.screen = el.dataset.nav;
+    render();
+  }));
+  document.querySelectorAll("[data-screen]").forEach(el => el.addEventListener("click", () => {
+    state.screen = el.dataset.screen;
     render();
   }));
   document.querySelectorAll("[data-book]").forEach(el => el.addEventListener("click", () => {
@@ -403,10 +441,12 @@ function bindEvents() {
   document.querySelectorAll("[data-rate]").forEach(el => el.addEventListener("click", () => {
     state.selectedBook.rating = Number(el.dataset.rate);
     if (state.selectedBook.rating === 5) state.selectedBook.loved = true;
+    saveLibrary();
     render();
   }));
   document.querySelector("#love-toggle")?.addEventListener("click", () => {
     state.selectedBook.loved = !state.selectedBook.loved;
+    saveLibrary();
     render();
   });
   document.querySelector("#mock-scan")?.addEventListener("click", () => {
@@ -422,12 +462,38 @@ function bindEvents() {
     setTimeout(() => { state.toast = ""; render(); }, 1800);
   });
   document.querySelector("#delete-book")?.addEventListener("click", () => {
-    state.toast = "Delete action is mocked in this prototype";
+    const book = state.selectedBook;
+    if (!confirm(`Remove "${book.title}" from your library?`)) return;
+    books = books.filter(item => item.id !== book.id);
+    saveLibrary();
+    state.selectedBook = books[0] || null;
+    state.screen = "library";
+    state.toast = `${book.title} was removed`;
     render();
     setTimeout(() => { state.toast = ""; render(); }, 1800);
   });
   document.querySelector("#edit-book")?.addEventListener("click", () => {
-    state.toast = "Edit form comes with local persistence in the next stage";
+    state.screen = "edit";
+    render();
+  });
+  document.querySelector("#edit-form")?.addEventListener("submit", e => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    Object.assign(state.selectedBook, {
+      title: data.get("title").trim(),
+      author: data.get("author").trim(),
+      isbn: data.get("isbn").trim(),
+      status: data.get("status"),
+      pages: Number(data.get("pages")) || 0,
+      started: data.get("started").trim(),
+      finished: data.get("finished").trim(),
+      rating: Number(data.get("rating")),
+      review: data.get("review").trim()
+    });
+    if (state.selectedBook.rating === 5) state.selectedBook.loved = true;
+    saveLibrary();
+    state.screen = "detail";
+    state.toast = "Book updated";
     render();
     setTimeout(() => { state.toast = ""; render(); }, 1800);
   });
