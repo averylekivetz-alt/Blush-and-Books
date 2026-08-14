@@ -74,6 +74,7 @@ h1,h2,h3 { font-family:"Playfair Display", Georgia, serif; }
 .stats-hero{text-align:center;padding:26px 20px;margin-bottom:14px;background:linear-gradient(160deg,#fffaf4,#f6e5e2)}.big-number{font-family:"Playfair Display";font-size:72px;line-height:.9;color:var(--rose-dark);margin:9px 0}.stats-hero h2{margin-bottom:8px}.stats-hero>p:last-child{color:var(--muted);font-size:12px}.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.stat-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:16px}.stat-card span,.stat-card small{display:block;color:var(--muted);font-size:10px}.stat-card strong{display:block;font-family:"Playfair Display";font-size:25px;margin:7px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chart-card{padding:20px;margin-bottom:14px}.bar-chart{height:150px;display:flex;align-items:end;justify-content:space-between;gap:8px;padding-top:20px}.bar-chart>div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px}.bar-chart span{width:70%;max-width:30px;background:linear-gradient(180deg,#d99aa4,#b97683);border-radius:8px 8px 3px 3px;min-height:10px}.bar-chart small{color:var(--muted);font-size:10px}.author-row{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.author-row:last-child{border-bottom:0}.author-avatar{width:40px;height:40px;border-radius:50%;background:#f0ddda;display:grid;place-items:center;color:#8c5860;font-size:11px;font-weight:700}.author-row strong{display:block;font-size:13px}.author-row small{color:var(--muted);font-size:10px}
 .profile-card{display:flex;gap:14px;align-items:center;padding:18px;margin-bottom:14px}.brand-mark{width:54px;height:54px;border-radius:18px;background:linear-gradient(145deg,#f2d8db,#fff4e8);display:grid;place-items:center;color:var(--rose-dark);font-size:24px;border:1px solid #ead1d1}.profile-card h2{margin:0 0 4px}.profile-card p{margin:0;color:var(--muted);font-size:12px}.settings-group{padding:10px 16px;margin-bottom:14px}.settings-group>.eyebrow{padding:8px 2px 4px}.setting-row{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:14px 2px;border-bottom:1px solid var(--line);text-align:left}.setting-row:last-child{border-bottom:0}.setting-row>span{font-weight:600;font-size:13px}.setting-row>div{display:flex;align-items:center;gap:4px;max-width:58%;color:var(--muted)}.setting-row small{text-align:right;font-size:10px}.setting-row svg{width:16px}.settings-note{background:#f3e5df;border-radius:18px;padding:16px;color:#6e5550;border:1px solid #ead5cc}.settings-note strong{font-family:"Playfair Display"}.settings-note p{font-size:11px;line-height:1.5;margin:5px 0 0}
 .toast{position:fixed;z-index:50;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 40px),420px);background:#3f322e;color:white;padding:12px 16px;border-radius:14px;text-align:center;font-size:12px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
+.cover-photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.cover-photo-actions label{cursor:pointer;padding:0 8px;text-align:center;font-size:12px}.cover-photo-actions input{display:none}.scan-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:10px;margin:18px 0}.scan-divider::before,.scan-divider::after{content:"";height:1px;background:var(--line);flex:1}
 @media (min-width: 700px){ body{padding:28px 0}.phone-shell{min-height:calc(100vh - 56px);border-radius:34px;overflow:hidden}.screen{min-height:calc(100vh - 56px)}.bottom-nav{bottom:28px;border-radius:0 0 34px 34px}.toast{bottom:116px} }
 @media (prefers-reduced-motion:no-preference){ button{transition:transform .15s ease,background .2s ease,color .2s ease}button:active{transform:scale(.97)}.cover{transition:transform .2s ease}.book-card:hover .cover{transform:translateY(-2px)} }
 @media (max-width:360px){.detail-hero{align-items:flex-start}.cover.detail-cover{width:122px;min-width:122px}.detail-title h1{font-size:24px}.reading-card{min-width:285px}.screen{padding-left:14px;padding-right:14px}.book-grid{gap:18px 10px}}
@@ -82,6 +83,7 @@ h1,h2,h3 { font-family:"Playfair Display", Georgia, serif; }
 </head>
 <body>
   <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js"));
@@ -222,6 +224,7 @@ const state = {
   bookSearch: "",
   searchResults: [],
   searchBusy: false,
+  pendingCoverPhoto: null,
   toast: ""
 };
 
@@ -359,7 +362,7 @@ function addView() {
 }
 
 function scanPanel() {
-  return `<section class="scan-card"><div class="scan-frame" id="scan-frame"><video class="scan-video" id="barcode-video" playsinline muted></video><div class="scan-corner c1"></div><div class="scan-corner c2"></div><div class="scan-corner c3"></div><div class="scan-corner c4"></div><div class="barcode">|||| ||| | |||| || |</div></div><h2>Scan the ISBN barcode</h2><p>Aim the rear camera at the barcode, or type the ISBN below.</p><div class="scan-actions"><button class="primary-btn" id="start-scan" type="button">${icon("camera")} Camera</button><button class="secondary-btn" id="stop-scan" type="button" hidden>Stop</button></div><form class="manual-form" id="isbn-form"><label>ISBN<input name="isbn" inputmode="numeric" placeholder="9781501161933" required></label><button class="secondary-btn" type="submit">${icon("search")} Find by ISBN</button></form><small>Camera scanning depends on browser support; ISBN entry always remains available.</small></section>`;
+  return `<section class="scan-card"><h2>Photograph the cover</h2><p>Take a clear, straight-on picture of the front cover. The app will read its title and find matching books.</p><div class="cover-photo-actions"><label class="primary-btn">${icon("camera")} Take Photo<input id="cover-camera-input" type="file" accept="image/*" capture="environment"></label><label class="secondary-btn">Choose Photo<input id="cover-library-input" type="file" accept="image/*"></label></div><small>Cover recognition may take 10â€“30 seconds the first time.</small><div class="scan-divider">OR SCAN THE BARCODE</div><div class="scan-frame" id="scan-frame"><video class="scan-video" id="barcode-video" playsinline muted></video><div class="scan-corner c1"></div><div class="scan-corner c2"></div><div class="scan-corner c3"></div><div class="scan-corner c4"></div><div class="barcode">|||| ||| | |||| || |</div></div><p>Aim the rear camera at the barcode, or type the ISBN below.</p><div class="scan-actions"><button class="primary-btn" id="start-scan" type="button">${icon("camera")} Barcode Camera</button><button class="secondary-btn" id="stop-scan" type="button" hidden>Stop</button></div><form class="manual-form" id="isbn-form"><label>ISBN<input name="isbn" inputmode="numeric" placeholder="9781501161933" required></label><button class="secondary-btn" type="submit">${icon("search")} Find by ISBN</button></form></section>`;
 }
 
 function searchPanel() {
@@ -529,6 +532,49 @@ function compressPhoto(file) {
   });
 }
 
+async function recognizeBookCover(file) {
+  stopScanner();
+  state.toast = "Reading the coverâ€”this may take a momentâ€¦";
+  render();
+  let worker;
+  try {
+    if (!window.Tesseract) throw new Error("OCR unavailable");
+    const coverPhoto = await compressPhoto(file);
+    worker = await Tesseract.createWorker("eng", 1, {
+      logger: message => {
+        if (message.status !== "recognizing text") return;
+        const toast = document.querySelector(".toast");
+        if (toast) toast.textContent = `Reading coverâ€¦ ${Math.round((message.progress || 0) * 100)}%`;
+      }
+    });
+    const result = await worker.recognize(coverPhoto, {rotateAuto:true});
+    const lines = [...new Set(result.data.text.split(/\r?\n/)
+      .map(line => line.replace(/[^A-Za-z0-9'&:.,! ?-]/g, " ").replace(/\s+/g, " ").trim())
+      .filter(line => /[A-Za-z]{2}/.test(line) && line.length >= 3 && line.length <= 80))];
+    if (!lines.length) throw new Error("No text found");
+    state.pendingCoverPhoto = coverPhoto;
+    state.bookSearch = lines.slice(0, 4).join(" ");
+    state.addMode = "search";
+    state.searchBusy = true;
+    render();
+    let results = await lookupBooks(state.bookSearch);
+    for (const line of lines.slice(0, 6)) {
+      if (results.length) break;
+      results = await lookupBooks(line);
+      if (results.length) state.bookSearch = line;
+    }
+    state.searchResults = results;
+    state.toast = results.length ? "Choose the matching book" : "I read the cover, but could not find a matchâ€”edit the search text and try again";
+  } catch {
+    state.pendingCoverPhoto = null;
+    state.toast = "I could not read that coverâ€”try a brighter, straighter photo";
+  } finally {
+    await worker?.terminate();
+    state.searchBusy = false;
+    render();
+  }
+}
+
 function bindEvents() {
   document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", () => {
     stopScanner();
@@ -576,6 +622,11 @@ function bindEvents() {
   });
   document.querySelectorAll("[data-search-result]").forEach(el => el.addEventListener("click", () => {
     const added = addBook(state.searchResults[Number(el.dataset.searchResult)]);
+    if (state.pendingCoverPhoto) {
+      added.photos.push(state.pendingCoverPhoto);
+      state.pendingCoverPhoto = null;
+      saveLibrary();
+    }
     state.selectedBook = added;
     state.screen = "detail";
     state.toast = `${added.title} was added`;
@@ -588,6 +639,12 @@ function bindEvents() {
     await showIsbnResults(isbn);
   });
   document.querySelector("#start-scan")?.addEventListener("click", startScanner);
+  ["#cover-camera-input", "#cover-library-input"].forEach(selector => {
+    document.querySelector(selector)?.addEventListener("change", e => {
+      const file = e.target.files?.[0];
+      if (file) recognizeBookCover(file);
+    });
+  });
   document.querySelector("#stop-scan")?.addEventListener("click", () => {
     stopScanner();
     document.querySelector("#scan-frame")?.classList.remove("scanning");
