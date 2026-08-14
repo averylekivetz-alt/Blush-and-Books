@@ -54,6 +54,7 @@ h1,h2,h3 { font-family:"Playfair Display", Georgia, serif; }
 .reading-card span { color:var(--muted); font-size:13px; }
 .progress { height:6px; background:#eadfd5; border-radius:99px; overflow:hidden; margin:14px 0 6px; }.progress i{display:block;height:100%;background:var(--rose);border-radius:99px}.reading-card small{color:var(--muted);font-size:11px}
 .cover { position:relative; aspect-ratio: .67; border-radius:10px 14px 14px 10px; background:linear-gradient(145deg,var(--c1),var(--c2)); overflow:hidden; box-shadow:0 10px 20px rgba(55,40,35,.22), inset 4px 0 0 rgba(255,255,255,.13); display:flex; align-items:center; justify-content:center; padding:12px; }
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cover::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 12%,transparent 84%,rgba(255,255,255,.16)); }
 .cover-glow { position:absolute; width:80%; height:42%; border-radius:50%; background:rgba(255,255,255,.18); filter:blur(20px); top:8%; right:-20%; }
 .cover span { position:relative; z-index:2; color:#fffaf2; text-align:center; font-family:"Playfair Display"; font-weight:700; font-size:13px; letter-spacing:.04em; text-shadow:0 2px 9px rgba(0,0,0,.25); }
@@ -207,6 +208,7 @@ function addBook(book) {
     started: book.started || "", finished: book.finished || "",
     isbn: book.isbn || "", pages: Number(book.pages) || 0,
     loved: Number(book.rating) === 5, review: book.review || "", photos: [],
+    source: book.source || "", coverImage: book.coverImage || "",
     cover: colors[nextId % colors.length],
     short: title.split(/\s+/).slice(0,3).join("\n").toUpperCase()
   };
@@ -246,7 +248,10 @@ function icon(name) {
 }
 
 function cover(book, cls="") {
-  return `<div class="cover ${cls}" style="--c1:${book.cover[0]};--c2:${book.cover[1]}"><div class="cover-glow"></div><span>${book.short.replaceAll("\n", "<br>")}</span></div>`;
+  const colors = book.cover || ["#9f5f6b", "#e8c2c8"];
+  const image = book.coverImage ? `<img src="${escapeHtml(book.coverImage)}" alt="" loading="lazy">` : "";
+  const title = book.coverImage ? "" : `<span>${escapeHtml(book.short || book.title).replaceAll("\n", "<br>")}</span>`;
+  return `<div class="cover ${cls}" style="--c1:${colors[0]};--c2:${colors[1]}">${image}<div class="cover-glow"></div>${title}</div>`;
 }
 
 function stars(rating, interactive=false) {
@@ -367,7 +372,7 @@ function scanPanel() {
 
 function searchPanel() {
   if (state.searchResults || state.bookSearch !== undefined) return `<section class="form-card"><form id="book-search-form"><label class="search-box big">${icon("search")}<input id="book-search" type="search" placeholder="Title, author, or ISBN" value="${escapeHtml(state.bookSearch)}" required></label><button class="primary-btn" type="submit" style="margin-top:10px">${state.searchBusy ? "Searching…" : "Search Books"}</button></form><p class="form-help">${state.searchResults.length ? "Results" : "Find your next read"}</p><div class="result-list">
-    ${state.searchResults.map((b,index) => `<button class="search-result" data-search-result="${index}">${cover(b,"tiny")}<div><strong>${escapeHtml(b.title)}</strong><span>${escapeHtml(b.author)}</span><small>${b.pages || "?"} pages${b.isbn ? ` · ISBN ${escapeHtml(b.isbn)}` : ""}</small></div>${icon("chevron")}</button>`).join("") || `<p style="color:var(--muted);font-size:13px;line-height:1.5">Search by title, author, or ISBN. Tap a result to add it to your library.</p>`}
+    ${state.searchResults.map((b,index) => `<button class="search-result" data-search-result="${index}">${cover(b,"tiny")}<div><strong>${escapeHtml(b.title)}</strong><span>${escapeHtml(b.author)}</span><small>${b.pages || "?"} pages${b.isbn ? ` · ISBN ${escapeHtml(b.isbn)}` : ""}${b.source ? ` · ${escapeHtml(b.source)}` : ""}</small></div>${icon("chevron")}</button>`).join("") || `<p style="color:var(--muted);font-size:13px;line-height:1.5">Search Google Books and Open Library by title, author, or ISBN. Tap a result to add it.</p>`}
   </div></section>`;
   return `<section class="form-card"><label class="search-box big">${icon("search")}<input id="book-search" type="search" placeholder="Title, author, or ISBN" value="better than the movies"></label><p class="form-help">Prototype results</p><div class="result-list">
     ${books.slice(1,4).map(b => `<button class="search-result" data-result="${b.id}">${cover(b,"tiny")}<div><strong>${b.title}</strong><span>${b.author}</span><small>${b.pages} pages · ISBN ${b.isbn}</small></div>${icon("chevron")}</button>`).join("")}
@@ -433,21 +438,91 @@ function render() {
   bindEvents();
 }
 
-async function lookupBooks(query) {
-  const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8&fields=title,author_name,isbn,number_of_pages_median`);
-  if (!response.ok) throw new Error("Book search failed");
+function bookResult(item, index, source) {
+  const title = item.title || "Untitled";
+  return {
+    id: `result-${source}-${index}`, title,
+    author: item.author || "Unknown author",
+    isbn: item.isbn || "", pages: item.pages || 0,
+    source, coverImage: item.coverImage || "",
+    status: "Want to Read", rating: 0, started: "", finished: "", loved: false, review: "",
+    cover: [["#9f5f6b","#e8c2c8"],["#657d84","#d9e8e8"],["#8a6d52","#ead8bd"]][index % 3],
+    short: title.split(/\s+/).slice(0,3).join("\n").toUpperCase()
+  };
+}
+
+async function lookupGoogleBooks(query) {
+  const isbn = query.match(/^isbn:\s*([0-9X-]+)/i)?.[1]?.replace(/-/g, "");
+  const googleQuery = isbn ? `isbn:${isbn}` : query;
+  const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(googleQuery)}&maxResults=12&printType=books`);
+  if (!response.ok) throw new Error("Google Books search failed");
   const data = await response.json();
-  return (data.docs || []).map((item, index) => {
-    const title = item.title || "Untitled";
-    return {
-      id: `result-${index}`, title,
-      author: item.author_name?.[0] || "Unknown author",
-      isbn: item.isbn?.[0] || "", pages: item.number_of_pages_median || 0,
-      status: "Want to Read", rating: 0, started: "", finished: "", loved: false, review: "",
-      cover: [["#9f5f6b","#e8c2c8"],["#657d84","#d9e8e8"],["#8a6d52","#ead8bd"]][index % 3],
-      short: title.split(/\s+/).slice(0,3).join("\n").toUpperCase()
-    };
+  return (data.items || []).map((entry, index) => {
+    const info = entry.volumeInfo || {};
+    const identifiers = info.industryIdentifiers || [];
+    const isbn13 = identifiers.find(value => value.type === "ISBN_13")?.identifier;
+    const isbn10 = identifiers.find(value => value.type === "ISBN_10")?.identifier;
+    return bookResult({
+      title: info.title,
+      author: (info.authors || [])[0],
+      isbn: isbn13 || isbn10 || "",
+      pages: info.pageCount,
+      coverImage: info.imageLinks?.thumbnail?.replace("http://", "https://") || ""
+    }, index, "Google Books");
   });
+}
+
+async function lookupOpenLibrary(query) {
+  const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8&fields=title,author_name,isbn,number_of_pages_median`);
+  if (!response.ok) throw new Error("Open Library search failed");
+  const data = await response.json();
+  return (data.docs || []).map((item, index) => bookResult({
+    title: item.title,
+    author: item.author_name?.[0],
+    isbn: item.isbn?.find(value => String(value).length === 13) || item.isbn?.[0] || "",
+    pages: item.number_of_pages_median
+  }, index, "Open Library"));
+}
+
+function mergeBookResults(groups) {
+  const seen = new Set();
+  return groups.flat().filter(book => {
+    const key = book.isbn || `${book.title}|${book.author}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function lookupBooks(query) {
+  const searches = await Promise.allSettled([lookupGoogleBooks(query), lookupOpenLibrary(query)]);
+  const groups = searches.filter(result => result.status === "fulfilled").map(result => result.value);
+  if (!groups.length) throw new Error("Book search failed");
+  return mergeBookResults(groups).slice(0, 14);
+}
+
+function usefulCoverLines(lines) {
+  const promotional = /new york times|bestsell(?:er|ing)|award.winning|author of|a novel|now a major|soon to be|international bestseller|book club/i;
+  return lines.filter(line => !promotional.test(line) && /[A-Za-z]{2}/.test(line))
+    .sort((a, b) => {
+      const score = value => (value.split(/\s+/).length >= 2 ? 4 : 0) + (value.length <= 45 ? 2 : 0) + (value === value.toUpperCase() ? 1 : 0);
+      return score(b) - score(a);
+    }).slice(0, 6);
+}
+
+async function lookupCoverMatches(lines) {
+  const useful = usefulCoverLines(lines);
+  const queries = [...new Set([useful.slice(0, 2).join(" "), ...useful.slice(0, 4)].filter(query => query.length >= 3))].slice(0, 5);
+  const searches = await Promise.allSettled(queries.map(lookupBooks));
+  const found = mergeBookResults(searches.filter(result => result.status === "fulfilled").map(result => result.value));
+  const ignored = new Set(["the","and","for","with","from","this","that","book","novel"]);
+  const tokens = new Set(lines.join(" ").toLowerCase().match(/[a-z0-9]{3,}/g)?.filter(word => !ignored.has(word)) || []);
+  const score = book => {
+    const titleWords = book.title.toLowerCase().match(/[a-z0-9]{3,}/g) || [];
+    const authorWords = book.author.toLowerCase().match(/[a-z0-9]{3,}/g) || [];
+    return titleWords.filter(word => tokens.has(word)).length * 4 + authorWords.filter(word => tokens.has(word)).length * 2 + (book.source === "Google Books" ? .1 : 0);
+  };
+  return {query: useful.slice(0, 2).join(" ") || lines[0], results: found.sort((a, b) => score(b) - score(a)).slice(0, 14)};
 }
 
 let scannerStream = null;
@@ -556,18 +631,14 @@ async function recognizeBookCover(file) {
       .filter(line => /[A-Za-z]{2}/.test(line) && line.length >= 3 && line.length <= 80))];
     if (!lines.length) throw new Error("No text found");
     state.pendingCoverPhoto = coverPhoto;
-    state.bookSearch = lines.slice(0, 4).join(" ");
+    state.bookSearch = usefulCoverLines(lines).slice(0, 2).join(" ") || lines[0];
     state.addMode = "search";
     state.searchBusy = true;
     render();
-    let results = await lookupBooks(state.bookSearch);
-    for (const line of lines.slice(0, 6)) {
-      if (results.length) break;
-      results = await lookupBooks(line);
-      if (results.length) state.bookSearch = line;
-    }
-    state.searchResults = results;
-    state.toast = results.length ? "Choose the matching book" : "I read the cover, but could not find a match—edit the search text and try again";
+    const matches = await lookupCoverMatches(lines);
+    state.bookSearch = matches.query;
+    state.searchResults = matches.results;
+    state.toast = matches.results.length ? "Choose the matching book" : "I read the cover, but could not find a match—edit the search text and try again";
   } catch {
     state.pendingCoverPhoto = null;
     state.toast = "I could not read that cover—try a brighter, straighter photo";
@@ -757,3 +828,4 @@ render();
   </script>
 </body>
 </html>
+
